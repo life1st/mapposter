@@ -2,15 +2,16 @@
   "location": {
     "name": "lisuiqiao",
     "center": [
-      116.407603,
-      40.048993
+      116.407399,
+      40.049451
     ],
     "zoom": 17,
     "width": 3200,
-    "height": 3200
+    "height": 3200,
+    "boundaryShape": "bbox"
   },
   "style": {
-    "themeColor": "#000000",
+    "themeColor": "#ffffff",
     "roadWidth": 2,
     "background": "transparent",
     "showLabels": false,
@@ -26,16 +27,16 @@
   },
   "water": {
     "show": true,
-    "opacity": 80
+    "opacity": 70
   },
   "green": {
-    "show": true,
-    "opacity": 60
+    "show": false,
+    "opacity": 30
   },
   "building": {
     "show": true,
     "opacity": 40,
-    "range": 80
+    "range": 65
   },
   "output": {
     "filename": "street-map1.png",

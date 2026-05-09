@@ -1,7 +1,20 @@
 const fs = require('fs');
 const https = require('https');
 const sharp = require('sharp');
-const config = require('./config.json');
+
+// 启动日志 - 确认进程已启动
+console.log('🚀 生成器进程已启动，正在加载配置...');
+
+let config;
+try {
+  config = require('./config.json');
+  console.log('✓ 配置加载成功:', config.location?.name || 'unnamed');
+} catch (e) {
+  console.error('❌ 加载配置失败:', e.message);
+  console.error('   工作目录:', process.cwd());
+  console.error('   尝试路径:', require('path').join(process.cwd(), 'config.json'));
+  process.exit(1);
+}
 const path = require('path');
 
 // 缓存目录
@@ -16,11 +29,11 @@ if (!fs.existsSync(CACHE_DIR)) {
 }
 
 // 生成缓存键（基于中心坐标和缩放级别）
-function generateCacheKey(center, zoom) {
+function generateCacheKey(center, zoom, boundaryShape = 'bbox') {
   const lon = center[0].toFixed(6);
   const lat = center[1].toFixed(6);
   const zoomStr = zoom.toFixed(1);
-  return `${lon}_${lat}_${zoomStr}`;
+  return `${lon}_${lat}_${zoomStr}_${boundaryShape}`;
 }
 
 // 获取缓存文件路径
@@ -55,12 +68,50 @@ function writeCache(cacheKey, data) {
   }
 }
 
-// Overpass API 服务器列表
+// Overpass API 服务器列表（按优先级排序）
 const OVERPASS_SERVERS = [
   'overpass-api.de',
+  'z.overpass-api.de',
   'lz4.overpass-api.de',
-  'z.overpass-api.de'
+  'overpass.kumi.systems',
+  'overpass.openstreetmap.fr',
+  'overpass.nchc.org.tw',
 ];
+
+// 服务器评分系统（响应时间越短，权重越高）
+const serverStats = {};
+OVERPASS_SERVERS.forEach(s => {
+  serverStats[s] = { avgResponseTime: 5000, successCount: 0, failCount: 0, weight: 1 };
+});
+
+// 更新服务器评分
+function updateServerStats(server, responseTime, success) {
+  const stats = serverStats[server];
+  if (!stats) return;
+
+  if (success) {
+    // 指数移动平均更新响应时间
+    const alpha = 0.3;
+    stats.avgResponseTime = alpha * responseTime + (1 - alpha) * stats.avgResponseTime;
+    stats.successCount++;
+  } else {
+    stats.failCount++;
+    // 失败增加响应时间惩罚
+    stats.avgResponseTime *= 1.2;
+  }
+
+  // 计算权重（响应时间越短权重越高）
+  stats.weight = 10000 / (stats.avgResponseTime + 100);
+}
+
+// 获取排序后的服务器列表（权重高的在前）
+function getSortedServers() {
+  return [...OVERPASS_SERVERS].sort((a, b) => {
+    const weightA = serverStats[a]?.weight || 0;
+    const weightB = serverStats[b]?.weight || 0;
+    return weightB - weightA;
+  });
+}
 
 // 道路等级对应的线宽倍数
 const ROAD_WIDTH_MULTIPLIERS = {
@@ -122,38 +173,55 @@ function metersToPixels(meters, zoom, latitude = 40) {
 }
 
 // OpenStreetMap Overpass API 查询（包含道路、河流、绿地和建筑物）
-function buildOverpassQuery(lat, lon, radius = 500) {
+// 支持两种边界形状：bbox(矩形) 和 around(圆形)
+function buildOverpassQuery(lat, lon, radius = 500, boundaryShape = 'bbox') {
+  let areaFilter;
+
+  if (boundaryShape === 'around') {
+    // 圆形查询：使用 around 过滤器
+    areaFilter = `around:${radius},${lat},${lon}`;
+  } else {
+    // 矩形查询：使用 bbox (边界框)
+    // 将半径转换为经纬度偏移（近似计算）
+    // 1度纬度 ≈ 111km，1度经度 ≈ 111km * cos(纬度)
+    const latDelta = radius / 111000;
+    const lonDelta = radius / (111000 * Math.cos(lat * Math.PI / 180));
+
+    const south = lat - latDelta;
+    const north = lat + latDelta;
+    const west = lon - lonDelta;
+    const east = lon + lonDelta;
+
+    areaFilter = `${south},${west},${north},${east}`;
+  }
+
   return `[out:json][timeout:30];
 (
-  way["highway"](around:${radius},${lat},${lon});
-  way["waterway"="riverbank"](around:${radius},${lat},${lon});
-  way["natural"="water"](around:${radius},${lat},${lon});
-  relation["waterway"="riverbank"](around:${radius},${lat},${lon});
-  relation["natural"="water"](around:${radius},${lat},${lon});
-  way["leisure"="park"](around:${radius},${lat},${lon});
-  way["landuse"="grass"](around:${radius},${lat},${lon});
-  way["landuse"="recreation_ground"](around:${radius},${lat},${lon});
-  way["natural"="grassland"](around:${radius},${lat},${lon});
-  way["natural"="meadow"](around:${radius},${lat},${lon});
-  way["landuse"="forest"](around:${radius},${lat},${lon});
-  way["natural"="wood"](around:${radius},${lat},${lon});
-  relation["leisure"="park"](around:${radius},${lat},${lon});
-  way["building"](around:${radius},${lat},${lon});
-  relation["building"](around:${radius},${lat},${lon});
+  way["highway"](${areaFilter});
+  way["waterway"="riverbank"](${areaFilter});
+  way["natural"="water"](${areaFilter});
+  relation["waterway"="riverbank"](${areaFilter});
+  relation["natural"="water"](${areaFilter});
+  way["leisure"="park"](${areaFilter});
+  way["landuse"="grass"](${areaFilter});
+  way["landuse"="recreation_ground"](${areaFilter});
+  way["natural"="grassland"](${areaFilter});
+  way["natural"="meadow"](${areaFilter});
+  way["landuse"="forest"](${areaFilter});
+  way["natural"="wood"](${areaFilter});
+  relation["leisure"="park"](${areaFilter});
+  way["building"](${areaFilter});
+  relation["building"](${areaFilter});
 );out body;>;out skel qt;`;
 }
 
-function fetchOverpassData(query, serverIndex = 0) {
+// 请求单个服务器
+function fetchFromServer(server, query, timeoutMs = 30000) {
   return new Promise((resolve, reject) => {
-    if (serverIndex >= OVERPASS_SERVERS.length) {
-      reject(new Error('所有 Overpass 服务器都不可用'));
-      return;
-    }
-
-    const server = OVERPASS_SERVERS[serverIndex];
-    console.log(`  尝试服务器: ${server}...`);
-
+    const startTime = Date.now();
     const postData = `data=${encodeURIComponent(query)}`;
+    let isCompleted = false;
+    let timeoutId = null;
 
     const options = {
       hostname: server,
@@ -163,60 +231,194 @@ function fetchOverpassData(query, serverIndex = 0) {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Content-Length': Buffer.byteLength(postData),
         'User-Agent': 'MapToPoster/1.0'
-      },
-      timeout: 30000
+      }
     };
 
     const req = https.request(options, (res) => {
       let data = '';
+
+      // 设置接收数据超时（响应体传输超时）
+      res.setTimeout(timeoutMs, () => {
+        if (!isCompleted) {
+          isCompleted = true;
+          clearTimeout(timeoutId);
+          req.destroy();
+          updateServerStats(server, timeoutMs, false);
+          reject(new Error('响应接收超时'));
+        }
+      });
 
       res.on('data', chunk => {
         data += chunk;
       });
 
       res.on('end', () => {
+        if (isCompleted) return;
+        isCompleted = true;
+        clearTimeout(timeoutId);
+
+        const responseTime = Date.now() - startTime;
+
         // 检查是否是 HTML 错误页面
         if (data.trim().startsWith('<')) {
-          console.log(`  服务器 ${server} 返回 HTML，尝试下一个...`);
-          fetchOverpassData(query, serverIndex + 1)
-            .then(resolve)
-            .catch(reject);
+          updateServerStats(server, responseTime, false);
+          reject(new Error('返回 HTML 错误页面'));
           return;
         }
 
         try {
           const json = JSON.parse(data);
-          if (json.elements) {
-            resolve(json);
-          } else {
+          if (!json.elements) {
+            updateServerStats(server, responseTime, false);
             reject(new Error('响应中没有地图元素'));
+            return;
           }
+          // 检查是否有超时标记
+          if (json.remark && json.remark.includes('timeout')) {
+            updateServerStats(server, responseTime, false);
+            reject(new Error('查询超时'));
+            return;
+          }
+          // 检查是否有节点数据
+          const hasNodes = json.elements.some(el => el.type === 'node');
+          if (!hasNodes) {
+            updateServerStats(server, responseTime, false);
+            reject(new Error('无节点数据'));
+            return;
+          }
+          updateServerStats(server, responseTime, true);
+          console.log(`    ✓ ${server} 响应成功 (${responseTime}ms, 权重: ${serverStats[server].weight.toFixed(1)})`);
+          resolve({ server, data: json });
         } catch (e) {
-          console.log(`  解析失败，尝试下一个服务器...`);
-          fetchOverpassData(query, serverIndex + 1)
-            .then(resolve)
-            .catch(reject);
+          updateServerStats(server, responseTime, false);
+          reject(new Error('解析失败'));
         }
+      });
+
+      res.on('error', (err) => {
+        if (isCompleted) return;
+        isCompleted = true;
+        clearTimeout(timeoutId);
+        updateServerStats(server, Date.now() - startTime, false);
+        reject(new Error(`响应错误: ${err.message}`));
       });
     });
 
-    req.on('error', (err) => {
-      console.log(`  服务器 ${server} 错误: ${err.message}`);
-      fetchOverpassData(query, serverIndex + 1)
-        .then(resolve)
-        .catch(reject);
-    });
+    // 连接超时（建立连接超时）
+    timeoutId = setTimeout(() => {
+      if (!isCompleted) {
+        isCompleted = true;
+        console.log(`    ✗ ${server} 连接超时 (${timeoutMs}ms)`);
+        req.destroy();
+        updateServerStats(server, timeoutMs, false);
+        reject(new Error('连接超时'));
+      }
+    }, timeoutMs);
 
-    req.on('timeout', () => {
-      req.destroy();
-      console.log(`  服务器 ${server} 超时，尝试下一个...`);
-      fetchOverpassData(query, serverIndex + 1)
-        .then(resolve)
-        .catch(reject);
+    req.on('error', (err) => {
+      if (isCompleted) return;
+      isCompleted = true;
+      clearTimeout(timeoutId);
+      updateServerStats(server, Date.now() - startTime, false);
+      reject(new Error(`请求错误: ${err.message}`));
     });
 
     req.write(postData);
     req.end();
+  });
+}
+
+// Race 模式：同时请求多个服务器，取最快成功的
+function fetchOverpassData(query, serverIndex = 0, globalTimeoutMs = 60000) {
+  return new Promise((resolve, reject) => {
+    // 获取按权重排序的服务器列表
+    const sortedServers = getSortedServers();
+    const remainingServers = sortedServers.slice(serverIndex);
+
+    if (remainingServers.length === 0) {
+      reject(new Error('所有 Overpass 服务器都不可用'));
+      return;
+    }
+
+    // 设置全局超时（整体超时）
+    const startTime = Date.now();
+    let isResolved = false;
+    const globalTimeoutId = setTimeout(() => {
+      if (!isResolved) {
+        isResolved = true;
+        console.log(`  ✗ 全局超时 (${globalTimeoutMs}ms)，终止请求`);
+        reject(new Error('所有服务器请求超时'));
+      }
+    }, globalTimeoutMs);
+
+    const safeResolve = (data) => {
+      if (!isResolved) {
+        isResolved = true;
+        clearTimeout(globalTimeoutId);
+        resolve(data);
+      }
+    };
+
+    const safeReject = (err) => {
+      if (!isResolved) {
+        isResolved = true;
+        clearTimeout(globalTimeoutId);
+        reject(err);
+      }
+    };
+
+    // 每次最多同时请求 2 个服务器
+    const batchSize = Math.min(2, remainingServers.length);
+    const batch = remainingServers.slice(0, batchSize);
+    const nextIndex = serverIndex + batchSize;
+
+    console.log(`  同时请求 ${batch.length} 个服务器 (30秒超时, 按权重排序): ${batch.join(', ')}...`);
+
+    const promises = batch.map(server =>
+      fetchFromServer(server, query, 30000)
+        .then(result => ({ success: true, result }))
+        .catch(error => ({ success: false, server, error: error.message }))
+    );
+
+    Promise.race(promises).then(firstResult => {
+      if (firstResult.success) {
+        console.log(`  ✓ ${firstResult.result.server} 最先返回成功结果 (${Date.now() - startTime}ms)`);
+        safeResolve(firstResult.result.data);
+      } else {
+        // 第一个完成的失败了，等待看有没有其他成功的
+        return Promise.allSettled(promises);
+      }
+    }).then(results => {
+      if (!results || isResolved) return; // 已经 resolve 过了
+
+      const successful = results.find(r => r.status === 'fulfilled' && r.value.success);
+      if (successful) {
+        console.log(`  ✓ ${successful.value.result.server} 返回成功结果 (${Date.now() - startTime}ms)`);
+        safeResolve(successful.value.result.data);
+      } else {
+        // 这一批都失败了，尝试下一批
+        console.log(`  ✗ 本批次服务器均失败 (${Date.now() - startTime}ms)，尝试下一批...`);
+        const remainingTime = globalTimeoutMs - (Date.now() - startTime);
+        if (remainingTime <= 1000) {
+          safeReject(new Error('剩余时间不足'));
+          return;
+        }
+        fetchOverpassData(query, nextIndex, remainingTime)
+          .then(safeResolve)
+          .catch(safeReject);
+      }
+    }).catch(err => {
+      if (isResolved) return;
+      // 意外错误，尝试下一批
+      const remainingTime = globalTimeoutMs - (Date.now() - startTime);
+      if (remainingTime <= 1000) {
+        safeReject(new Error('请求超时'));
+        return;
+      }
+      fetchOverpassData(query, nextIndex, remainingTime)
+        .then(safeResolve)
+        .catch(safeReject);
+    });
   });
 }
 
@@ -513,31 +715,51 @@ function drawLine(pixels, width, height, x0, y0, x1, y1, color, thickness, alpha
 }
 
 async function generateMap() {
-  console.log('=== MapToPoster - OSM 街道地图生成器 ===');
-  console.log('位置:', config.location.name);
-  console.log('中心坐标:', config.location.center.join(', '));
+  try {
+    console.log('=== MapToPoster - OSM 街道地图生成器 ===');
+    console.log('位置:', config.location.name);
+    console.log('中心坐标:', config.location.center.join(', '));
 
-  const { center, zoom, width, height } = config.location;
-  const { themeColor, roadColor, roadWidth } = config.style;
-  const baseThemeColor = themeColor || roadColor || '#ffffff';
+    const { center, zoom, width, height } = config.location;
+    const { themeColor, roadColor, roadWidth } = config.style;
+    const baseThemeColor = themeColor || roadColor || '#ffffff';
 
-  const lon = center[0];
-  const lat = center[1];
+    const lon = center[0];
+    const lat = center[1];
 
   // 计算查询半径 (基于中心纬度)
   const metersPerPixel = (2 * Math.PI * EARTH_RADIUS * Math.cos(lat * Math.PI / 180)) / (256 * Math.pow(2, zoom));
   const radius = Math.max(width, height) * metersPerPixel / 2;
 
+  // 获取边界形状配置，默认为 bbox（矩形）
+  const boundaryShape = config.location?.boundaryShape || 'bbox';
+
   // 检查缓存
-  const cacheKey = generateCacheKey(center, zoom);
+  const cacheKey = generateCacheKey(center, zoom, boundaryShape);
   let data = readCache(cacheKey);
+
+  // 验证缓存数据完整性
+  if (data && !data.elements) {
+    console.log('  ⚠ 缓存数据无效，重新获取...');
+    data = null;
+  }
+
+  // 检查缓存中是否有节点数据（超时查询可能只返回ways没有nodes）
+  if (data && data.elements) {
+    const hasNodes = data.elements.some(el => el.type === 'node');
+    if (!hasNodes) {
+      console.log('  ⚠ 缓存数据不完整（缺少节点），重新获取...');
+      data = null;
+    }
+  }
 
   if (!data) {
     console.log('正在获取 OpenStreetMap 数据...');
+    console.log(`边界形状: ${boundaryShape === 'around' ? '圆形' : '矩形'}`);
     console.log(`查询半径: ${Math.round(radius)} 米`);
 
     try {
-      data = await fetchOverpassData(buildOverpassQuery(lat, lon, radius));
+      data = await fetchOverpassData(buildOverpassQuery(lat, lon, radius, boundaryShape));
       // 保存到缓存
       writeCache(cacheKey, data);
       console.log(`  ✓ 数据已缓存 (${cacheKey})`);
@@ -555,11 +777,14 @@ async function generateMap() {
 
   // 创建节点映射
   const nodes = {};
+  let nodeCount = 0;
   data.elements.forEach(el => {
     if (el.type === 'node') {
       nodes[el.id] = { lat: el.lat, lon: el.lon };
+      nodeCount++;
     }
   });
+  console.log(`  节点数: ${nodeCount}`);
 
   // 计算边界 (Web Mercator 投影)
   const bounds = calculateBounds(center, zoom, width, height);
@@ -662,6 +887,8 @@ async function generateMap() {
       }
     }
   });
+
+  console.log(`  道路数: ${roads.length}, 绿地: ${greenPolygons.length}, 水域: ${waterPolygons.length}, 建筑: ${buildingPolygons.length}`);
 
   // 绘制绿地（在最下层）
   let greenPolygonCount = 0;
@@ -824,19 +1051,25 @@ async function generateMap() {
 
   // 绘制道路（根据等级调整宽度）
   let roadSegmentCount = 0;
+  let totalNodeRefs = 0;
+  let matchedNodes = 0;
 
   roads.forEach(el => {
     const points = [];
-    el.nodes.forEach(nodeId => {
-      const node = nodes[nodeId];
-      if (node) {
-        const pos = latLonToPixel(node.lon, node.lat, bounds, width, height);
-        points.push(pos);
-      }
-    });
+    if (el.nodes) {
+      el.nodes.forEach(nodeId => {
+        totalNodeRefs++;
+        const node = nodes[nodeId];
+        if (node) {
+          matchedNodes++;
+          const pos = latLonToPixel(node.lon, node.lat, bounds, width, height);
+          points.push(pos);
+        }
+      });
+    }
 
     // 根据道路等级获取线宽
-    const highwayType = el.tags.highway;
+    const highwayType = el.tags?.highway;
     const currentRoadWidth = getRoadWidth(highwayType, roadWidth);
 
     for (let i = 0; i < points.length - 1; i++) {
@@ -849,6 +1082,7 @@ async function generateMap() {
       roadSegmentCount++;
     }
   });
+  console.log(`  道路节点引用: ${totalNodeRefs}, 成功匹配: ${matchedNodes}`);
 
   console.log(`✓ 绘制了 ${roads.length} 条道路 (${roadSegmentCount} 个线段，按等级调整宽度)`);
 
@@ -922,9 +1156,15 @@ async function generateMap() {
   } else {
     console.log(`   建筑物: 不显示`);
   }
+  } catch (err) {
+    console.error('\n❌ 生成过程错误:', err.message);
+    console.error('   堆栈:', err.stack);
+    throw err;
+  }
 }
 
 generateMap().catch(err => {
   console.error('\n❌ 错误:', err.message);
+  console.error('   堆栈:', err.stack);
   process.exit(1);
 });

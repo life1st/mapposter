@@ -40,7 +40,8 @@ const Config = {
         center: [116.407378, 40.047033],
         zoom: 17,
         width: 1600,
-        height: 1600
+        height: 1600,
+        boundaryShape: 'bbox'
       },
       style: {
         themeColor: '#ffffff',
@@ -72,5 +73,67 @@ const ColorUtils = {
   normalize(color) {
     if (!color) return '#ffffff';
     return color.toLowerCase();
+  }
+};
+
+// 坐标历史记录管理（使用 localStorage）
+const LocationHistory = {
+  STORAGE_KEY: 'mapposter_location_history',
+  MAX_ITEMS: 5,
+
+  load() {
+    try {
+      const data = localStorage.getItem(this.STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      console.error('加载坐标历史失败:', e);
+      return [];
+    }
+  },
+
+  save(history) {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(history.slice(0, this.MAX_ITEMS)));
+    } catch (e) {
+      console.error('保存坐标历史失败:', e);
+    }
+  },
+
+  add(lon, lat, name) {
+    const history = this.load();
+    const newItem = {
+      lon: parseFloat(lon),
+      lat: parseFloat(lat),
+      name: name || '',
+      time: Date.now()
+    };
+
+    // 去重：如果已有相同坐标，先删除旧的
+    const filtered = history.filter(item =>
+      !(Math.abs(item.lon - newItem.lon) < 0.0001 && Math.abs(item.lat - newItem.lat) < 0.0001)
+    );
+
+    // 添加到开头
+    filtered.unshift(newItem);
+
+    // 保存（只保留前5条）
+    this.save(filtered);
+    return filtered.slice(0, this.MAX_ITEMS);
+  },
+
+  remove(index) {
+    const history = this.load();
+    history.splice(index, 1);
+    this.save(history);
+    return history;
+  },
+
+  updateName(index, name) {
+    const history = this.load();
+    if (history[index]) {
+      history[index].name = name;
+      this.save(history);
+    }
+    return history;
   }
 };

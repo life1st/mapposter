@@ -92,6 +92,12 @@ const UI = {
     document.getElementById('width').value = config.location.width;
     document.getElementById('height').value = config.location.height;
 
+    // 边界形状
+    const boundaryShapeSelect = document.getElementById('boundaryShape');
+    if (boundaryShapeSelect && config.location.boundaryShape) {
+      boundaryShapeSelect.value = config.location.boundaryShape;
+    }
+
     // 主题色（兼容旧配置的roadColor）
     const themeColor = config.style.themeColor || config.style.roadColor || '#ffffff';
     document.getElementById('themeColor').value = ColorUtils.normalize(themeColor);
@@ -147,6 +153,12 @@ const UI = {
     document.getElementById('zoom').value = defaults.location.zoom;
     document.getElementById('width').value = defaults.location.width;
     document.getElementById('height').value = defaults.location.height;
+
+    const boundaryShapeSelect = document.getElementById('boundaryShape');
+    if (boundaryShapeSelect) {
+      boundaryShapeSelect.value = defaults.location.boundaryShape || 'bbox';
+    }
+
     document.getElementById('themeColor').value = defaults.style.themeColor;
     document.getElementById('filename').value = defaults.output.filename;
     document.getElementById('borderType').value = defaults.border.type;
@@ -197,6 +209,156 @@ function togglePreviewTheme() {
 
 // 当前激活的 tab
 let currentTab = 'edit';
+
+// 地图 Modal 相关
+let mapInstance = null;
+let mapMarker = null;
+let selectedLat = null;
+let selectedLon = null;
+
+function openMapModal() {
+  const modal = document.getElementById('mapModal');
+  modal.style.display = 'flex';
+
+  // 延迟初始化地图，确保容器可见
+  setTimeout(() => {
+    initMap();
+  }, 100);
+}
+
+function closeMapModal() {
+  const modal = document.getElementById('mapModal');
+  modal.style.display = 'none';
+}
+
+function initMap() {
+  const container = document.getElementById('mapContainer');
+  if (!container) return;
+
+  // 获取当前输入的坐标，或使用默认值
+  const currentLon = parseFloat(document.getElementById('lon').value) || 116.407378;
+  const currentLat = parseFloat(document.getElementById('lat').value) || 40.047033;
+
+  selectedLat = currentLat;
+  selectedLon = currentLon;
+
+  // 如果地图已存在，只需更新视图
+  if (mapInstance) {
+    mapInstance.setView([currentLat, currentLon], 15);
+    mapMarker.setLatLng([currentLat, currentLon]);
+    updateCoordsDisplay();
+    return;
+  }
+
+  // 创建地图实例
+  mapInstance = L.map('mapContainer').setView([currentLat, currentLon], 15);
+
+  // 添加 OpenStreetMap 图层
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(mapInstance);
+
+  // 添加标记
+  mapMarker = L.marker([currentLat, currentLon], { draggable: true }).addTo(mapInstance);
+
+  // 标记拖动事件
+  mapMarker.on('dragend', function(e) {
+    const latLng = e.target.getLatLng();
+    selectedLat = latLng.lat;
+    selectedLon = latLng.lng;
+    updateCoordsDisplay();
+  });
+
+  // 地图点击事件
+  mapInstance.on('click', function(e) {
+    selectedLat = e.latlng.lat;
+    selectedLon = e.latlng.lng;
+    mapMarker.setLatLng([selectedLat, selectedLon]);
+    updateCoordsDisplay();
+  });
+
+  updateCoordsDisplay();
+}
+
+function updateCoordsDisplay() {
+  const coordsEl = document.getElementById('selectedCoords');
+  if (coordsEl && selectedLat && selectedLon) {
+    coordsEl.textContent = `${selectedLat.toFixed(6)}, ${selectedLon.toFixed(6)}`;
+  }
+}
+
+function confirmMapSelection() {
+  if (selectedLat && selectedLon) {
+    document.getElementById('lat').value = selectedLat.toFixed(6);
+    document.getElementById('lon').value = selectedLon.toFixed(6);
+    // 保存到历史记录
+    saveCurrentLocation();
+  }
+  closeMapModal();
+}
+
+// 坐标历史记录管理
+function saveCurrentLocation() {
+  const lon = document.getElementById('lon').value;
+  const lat = document.getElementById('lat').value;
+  const name = document.getElementById('locationName').value;
+
+  if (!lon || !lat) {
+    return;
+  }
+
+  LocationHistory.add(lon, lat, name);
+  renderLocationHistory();
+}
+
+function renderLocationHistory() {
+  const container = document.getElementById('historyList');
+  if (!container) return;
+
+  const history = LocationHistory.load();
+
+  if (history.length === 0) {
+    container.innerHTML = '<div class="history-empty">暂无历史记录</div>';
+    return;
+  }
+
+  container.innerHTML = history.map((item, index) => `
+    <div class="history-item" onclick="applyLocationHistory(${index})">
+      <span class="history-item-coords">${item.lon.toFixed(4)}, ${item.lat.toFixed(4)}</span>
+      <input type="text"
+             class="history-item-name"
+             placeholder="添加备注..."
+             value="${item.name || ''}"
+             onclick="event.stopPropagation()"
+             onchange="updateLocationName(${index}, this.value)">
+      <button class="history-item-delete"
+              onclick="event.stopPropagation(); deleteLocationHistory(${index})"
+              title="删除">&times;</button>
+    </div>
+  `).join('');
+}
+
+function applyLocationHistory(index) {
+  const history = LocationHistory.load();
+  const item = history[index];
+  if (item) {
+    document.getElementById('lon').value = item.lon.toFixed(6);
+    document.getElementById('lat').value = item.lat.toFixed(6);
+    if (item.name) {
+      document.getElementById('locationName').value = item.name;
+    }
+  }
+}
+
+function updateLocationName(index, name) {
+  LocationHistory.updateName(index, name);
+}
+
+function deleteLocationHistory(index) {
+  LocationHistory.remove(index);
+  renderLocationHistory();
+}
 
 // 切换 tab
 function switchTab(tab) {

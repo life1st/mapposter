@@ -354,6 +354,62 @@
       cursor: not-allowed;
     }
 
+    .btn-generate-wrapper {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      background: #bdc3c7;
+      border-radius: 8px;
+      cursor: not-allowed;
+    }
+
+    .btn-generate-wrapper .btn-text {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      color: #7f8c8d;
+    }
+
+    .btn-generate-wrapper .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #95a5a6;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .stop-btn {
+      width: 24px;
+      height: 24px;
+      background: #e74c3c;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    .stop-btn:hover {
+      background: #c0392b;
+    }
+
+    .stop-btn::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 1px;
+    }
+
     .btn-secondary {
       background: #ecf0f1;
       color: #2c3e50;
@@ -361,6 +417,141 @@
 
     .btn-secondary:hover {
       background: #d5dbdb;
+    }
+
+    .btn-map {
+      width: 100%;
+      margin-top: 8px;
+      padding: 10px 16px;
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-map:hover {
+      background: #e9ecef;
+      border-color: #3498db;
+    }
+
+    /* 坐标历史记录 */
+    .location-history {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #ecf0f1;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .history-header label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #555;
+      margin: 0;
+    }
+
+    .btn-save-location {
+      padding: 4px 12px;
+      font-size: 12px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-save-location:hover {
+      background: #2980b9;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .history-item:hover {
+      border-color: #3498db;
+      background: #f8f9fa;
+    }
+
+    .history-item-coords {
+      flex: 1;
+      font-size: 12px;
+      color: #666;
+      font-family: 'Monaco', 'Menlo', monospace;
+    }
+
+    .history-item-name {
+      flex: 1;
+      font-size: 13px;
+      color: #333;
+      border: none;
+      background: transparent;
+      outline: none;
+      padding: 2px 4px;
+    }
+
+    .history-item-name:focus {
+      background: #e3f2fd;
+      border-radius: 3px;
+    }
+
+    .history-item-name::placeholder {
+      color: #999;
+      font-style: italic;
+    }
+
+    .history-item-delete {
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      color: #999;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: all 0.2s;
+    }
+
+    .history-item:hover .history-item-delete {
+      opacity: 1;
+    }
+
+    .history-item-delete:hover {
+      background: #e74c3c;
+      color: white;
+    }
+
+    .history-empty {
+      font-size: 12px;
+      color: #999;
+      padding: 12px;
+      text-align: center;
     }
 
     /* 历史面板 */
@@ -436,6 +627,28 @@
       background: rgba(192, 57, 43, 1);
     }
 
+    .gallery-load-more {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      aspect-ratio: 1;
+      background: #f8f9fa;
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #666;
+      font-size: 13px;
+      text-align: center;
+      padding: 10px;
+    }
+
+    .gallery-load-more:hover {
+      background: #e9ecef;
+      border-color: #3498db;
+      color: #3498db;
+    }
+
     .empty-history {
       text-align: center;
       color: #999;
@@ -503,12 +716,32 @@
       font-family: 'Monaco', 'Menlo', monospace;
       font-size: 11px;
       line-height: 1.5;
-      max-height: 150px;
+      max-height: 200px;
       overflow-y: auto;
       white-space: pre-wrap;
       word-break: break-all;
       margin-top: 16px;
       display: none;
+    }
+
+    .log-output .log-line {
+      padding: 2px 0;
+      opacity: 0.7;
+      transition: opacity 0.3s;
+    }
+
+    .log-output .log-line:last-child {
+      opacity: 1;
+      color: #fff;
+      font-weight: 500;
+    }
+
+    .log-output .log-line.success {
+      color: #2ecc71;
+    }
+
+    .log-output .log-line.error {
+      color: #e74c3c;
     }
 
     .loading {
@@ -529,6 +762,108 @@
 
     @keyframes spin {
       to { transform: rotate(360deg); }
+    }
+
+    /* Modal 样式 */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+      position: relative;
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid #ecf0f1;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      border: none;
+      background: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #7f8c8d;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+    }
+
+    .modal-close:hover {
+      background: #ecf0f1;
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    .map-info {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #7f8c8d;
+    }
+
+    #selectedCoords {
+      color: #3498db;
+      font-weight: 500;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 20px;
+      border-top: 1px solid #ecf0f1;
+      background: #f8f9fa;
+    }
+
+    .modal-footer .btn {
+      padding: 8px 20px;
+      font-size: 14px;
+    }
+
+    /* Leaflet 地图自定义样式 */
+    .leaflet-container {
+      border-radius: 8px;
     }
   </style>
 </head>
@@ -597,6 +932,22 @@
                   <input type="number" id="lat" step="0.000001" placeholder="40.047033">
                 </div>
               </div>
+              <div class="form-group">
+                <button type="button" class="btn btn-map" onclick="openMapModal()">
+                  📍 在地图上选择位置
+                </button>
+              </div>
+
+              <!-- 坐标历史记录 -->
+              <div class="location-history" id="locationHistory">
+                <div class="history-header">
+                  <label>最近使用</label>
+                  <button type="button" class="btn-save-location" onclick="saveCurrentLocation()">保存当前位置</button>
+                </div>
+                <div class="history-list" id="historyList">
+                  <!-- 动态填充 -->
+                </div>
+              </div>
             </div>
 
             <!-- 地图参数 -->
@@ -616,6 +967,13 @@
                   <label>高度 (px)</label>
                   <input type="number" id="height" value="1600" step="100">
                 </div>
+              </div>
+              <div class="form-group">
+                <label>边界形状</label>
+                <select id="boundaryShape">
+                  <option value="bbox" selected>矩形 (bbox)</option>
+                  <option value="around">圆形 (around)</option>
+                </select>
               </div>
               <div class="form-group">
                 <label>输出文件名</label>
@@ -730,12 +1088,12 @@
               </div>
             </div>
 
+            <div class="log-output" id="logOutput"></div>
+
             <div class="action-bar">
               <button class="btn btn-secondary" onclick="resetConfig()">重置</button>
               <button class="btn btn-primary" id="generateBtn" onclick="generateMap()">生成地图</button>
             </div>
-
-            <div class="log-output" id="logOutput"></div>
           </div>
 
           <!-- 历史记录面板 -->
@@ -755,6 +1113,33 @@
       </div>
     </div>
   </div>
+
+  <!-- 地图 Modal -->
+  <div id="mapModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeMapModal()"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>选择位置</h3>
+        <button class="modal-close" onclick="closeMapModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="mapContainer" style="width: 100%; height: 400px;"></div>
+        <div class="map-info">
+          <span>点击地图选择位置</span>
+          <span id="selectedCoords"></span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeMapModal()">取消</button>
+        <button class="btn btn-primary" onclick="confirmMapSelection()">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script src="js/config.js"></script>
   <script src="js/preview.js"></script>

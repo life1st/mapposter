@@ -2,11 +2,14 @@
 const Gallery = {
   images: [],
   currentPreview: null,
+  displayCount: 10,
+  DISPLAY_INCREMENT: 10,
 
   async load() {
     try {
       const res = await fetch('/api/images');
       this.images = await res.json();
+      this.displayCount = this.DISPLAY_INCREMENT;
       this.render(this.images);
 
       // 如果当前在编辑 tab 且有最新图片，更新预览
@@ -36,31 +39,29 @@ const Gallery = {
       return;
     }
 
-    gallery.innerHTML = images.slice(0, 10).map((img, index) => `
+    const displayedImages = images.slice(0, this.displayCount);
+    const hasMore = images.length > this.displayCount;
+
+    let html = displayedImages.map((img, index) => `
       <div class="gallery-item ${index === 0 ? 'active' : ''}" data-filename="${img.name}" data-index="${index}">
         <img src="${img.url}" alt="${img.name}" loading="lazy">
         <button class="gallery-delete" data-filename="${img.name}" title="删除">×</button>
       </div>
     `).join('');
 
-    // 使用事件委托绑定点击事件
-    gallery.querySelectorAll('.gallery-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        if (e.target.classList.contains('gallery-delete')) return;
-        const filename = item.dataset.filename;
-        const index = parseInt(item.dataset.index);
-        this.selectImage(filename, index);
-      });
-    });
+    // 添加"加载更多"按钮
+    if (hasMore) {
+      const remaining = images.length - this.displayCount;
+      html += `
+        <div class="gallery-load-more" onclick="Gallery.loadMore()">
+          <span>加载更多 (${remaining} 张)</span>
+        </div>
+      `;
+    }
 
-    // 绑定删除按钮事件
-    gallery.querySelectorAll('.gallery-delete').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const filename = btn.dataset.filename;
-        this.deleteImage(filename);
-      });
-    });
+    gallery.innerHTML = html;
+
+    this.rebindEvents();
   },
 
   selectImage(filename, index) {
@@ -114,6 +115,36 @@ const Gallery = {
       `;
     }
     document.getElementById('previewControls').style.display = 'none';
+  },
+
+  loadMore() {
+    this.displayCount += this.DISPLAY_INCREMENT;
+    this.render(this.images);
+    this.rebindEvents();
+  },
+
+  rebindEvents() {
+    const gallery = document.getElementById('gallery');
+    if (!gallery) return;
+
+    // 重新绑定点击事件
+    gallery.querySelectorAll('.gallery-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        if (e.target.classList.contains('gallery-delete')) return;
+        const filename = item.dataset.filename;
+        const index = parseInt(item.dataset.index);
+        this.selectImage(filename, index);
+      });
+    });
+
+    // 重新绑定删除按钮事件
+    gallery.querySelectorAll('.gallery-delete').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const filename = btn.dataset.filename;
+        this.deleteImage(filename);
+      });
+    });
   },
 
   async deleteImage(filename) {

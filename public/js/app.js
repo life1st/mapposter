@@ -9,4 +9,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // 加载历史记录（会自动设置默认预览）
   Gallery.load();
+
+  // 渲染坐标历史记录
+  renderLocationHistory();
+
+  // 检查是否有运行中的生成任务
+  MapGenerator.checkStatus();
 });
