@@ -1,0 +1,44 @@
+{
+  "location": {
+    "name": "lisuiqiao",
+    "center": [
+      116.407603,
+      40.048993
+    ],
+    "zoom": 17,
+    "width": 3200,
+    "height": 3200
+  },
+  "style": {
+    "roadColor": "#ffffff",
+    "roadWidth": 2,
+    "background": "transparent",
+    "showLabels": false,
+    "showBuildings": false,
+    "showPois": false
+  },
+  "border": {
+    "type": "none",
+    "width": 4,
+    "outerWidth": 4,
+    "gap": 20,
+    "innerWidth": 1
+  },
+  "water": {
+    "show": true,
+    "opacity": 80
+  },
+  "green": {
+    "show": false,
+    "opacity": 100
+  },
+  "output": {
+    "filename": "street-map1.png",
+    "format": "png"
+  },
+  "fade": {
+    "type": "gradient",
+    "ratio": 25
+  },
+  "provider": "osm"
+}

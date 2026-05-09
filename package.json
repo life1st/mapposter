@@ -1,0 +1,28 @@
+{
+  "name": "maptoposter",
+  "version": "1.0.0",
+  "description": "Generate street map PNG with white roads on transparent background",
+  "main": "index.js",
+  "scripts": {
+    "setup": "node setup.js",
+    "generate": "node index.js",
+    "generate:mapbox": "node mapbox-generator.js",
+    "generate:osm": "node osm-generator.js",
+    "web": "node server.js"
+  },
+  "dependencies": {
+    "@mapbox/mapbox-sdk": "^0.15.3",
+    "express": "^5.2.1",
+    "node-fetch": "^2.7.0",
+    "sharp": "^0.33.5"
+  },
+  "keywords": [
+    "map",
+    "poster",
+    "png",
+    "openstreetmap",
+    "mapbox"
+  ],
+  "author": "",
+  "license": "MIT"
+}
