@@ -101,6 +101,30 @@ app.get('/api/images', (req, res) => {
   }
 });
 
+// 删除图片
+app.delete('/api/images/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    // 防止目录遍历攻击
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(400).json({ error: '非法文件名' });
+    }
+
+    const filePath = path.join(STATIC_DIR, filename);
+
+    // 检查文件是否存在
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: '文件不存在' });
+    }
+
+    // 删除文件
+    fs.unlinkSync(filePath);
+    res.json({ success: true, message: '删除成功' });
+  } catch (e) {
+    res.status(500).json({ error: '删除失败: ' + e.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`=== MapToPoster Web Server ===`);
   console.log(`访问 http://localhost:${PORT} 开始配置地图`);

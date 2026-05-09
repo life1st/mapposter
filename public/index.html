@@ -196,6 +196,35 @@
       object-fit: cover;
     }
 
+    .gallery-delete {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(231, 76, 60, 0.9);
+      color: white;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .gallery-item:hover .gallery-delete {
+      opacity: 1;
+    }
+
+    .gallery-delete:hover {
+      background: rgba(192, 57, 43, 1);
+    }
+
     /* 底部配置区域 */
     .config-section {
       background: white;
@@ -512,18 +541,13 @@
           </div>
         </div>
 
-        <!-- 道路样式 -->
+        <!-- 主题设置 -->
         <div class="config-group">
-          <h4>道路样式</h4>
-          <div class="form-row">
-            <div class="form-group">
-              <label>道路颜色 <span class="color-preview" id="colorPreview"></span></label>
-              <input type="color" id="roadColor" value="#ffffff">
-            </div>
-            <div class="form-group">
-              <label>道路宽度</label>
-              <input type="number" id="roadWidth" value="2" min="1" max="10">
-            </div>
+          <h4>主题设置</h4>
+          <div class="form-group">
+            <label>主题色 <span class="color-preview" id="colorPreview"></span></label>
+            <input type="color" id="themeColor" value="#ffffff">
+            <div class="form-hint">所有元素（道路、水域、绿地、建筑物等）的基础颜色</div>
           </div>
         </div>
 
@@ -585,6 +609,25 @@
             <label>绿地透明度 (%)</label>
             <input type="number" id="greenOpacity" value="80" min="0" max="100">
             <div class="form-hint">0=完全透明，100=不透明</div>
+          </div>
+        </div>
+
+        <!-- 建筑物设置 -->
+        <div class="config-group">
+          <h4>建筑物设置</h4>
+          <div class="checkbox-group">
+            <input type="checkbox" id="showBuilding" checked>
+            <label for="showBuilding">显示建筑物</label>
+          </div>
+          <div class="form-group">
+            <label>建筑物透明度 (%)</label>
+            <input type="number" id="buildingOpacity" value="60" min="0" max="100">
+            <div class="form-hint">0=完全透明，100=不透明</div>
+          </div>
+          <div class="form-group">
+            <label>绘制范围 (%)</label>
+            <input type="number" id="buildingRange" value="80" min="0" max="100">
+            <div class="form-hint">从图片中心开始的绘制范围，0-100%</div>
           </div>
         </div>
 

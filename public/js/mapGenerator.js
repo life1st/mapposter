@@ -50,8 +50,8 @@ const MapGenerator = {
         height: parseInt(document.getElementById('height').value) || 1600
       },
       style: {
-        roadColor: document.getElementById('roadColor').value,
-        roadWidth: parseInt(document.getElementById('roadWidth').value) || 2,
+        themeColor: document.getElementById('themeColor').value,
+        roadWidth: 2,
         background: 'transparent',
         showLabels: false,
         showBuildings: false,
@@ -71,6 +71,11 @@ const MapGenerator = {
       green: {
         show: document.getElementById('showGreen').checked,
         opacity: parseInt(document.getElementById('greenOpacity').value) || 80
+      },
+      building: {
+        show: document.getElementById('showBuilding').checked,
+        opacity: parseInt(document.getElementById('buildingOpacity').value) || 60,
+        range: parseInt(document.getElementById('buildingRange').value) || 80
       },
       output: {
         filename: document.getElementById('filename').value || 'street-map.png',

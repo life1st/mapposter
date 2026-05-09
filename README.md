@@ -1,13 +1,18 @@
-# MapToPoster
+# MapToPoster - 地图海报生成器
 
-生成街道地图 PNG 图片，道路为白色线，背景透明。
+从 OpenStreetMap 数据生成可自定义的街道地图海报 PNG 图片。
 
 ## 特性
 
-- 🗺️ 使用 OpenStreetMap 数据（免费）或 Mapbox（需要 token）
-- ⚪ 白色道路线条
+- 🗺️ 使用 OpenStreetMap 数据（免费）
+- ⚪ 统一主题色，所有元素使用相同基础色调
 - 🔲 透明背景
-- ⚙️ 可配置的坐标、缩放级别和尺寸
+- 🎨 Web 界面可视化配置
+- 🖼️ 多种边框样式（无边框/单层/双层）
+- 💧 河流/水域显示，支持透明度调节
+- 🌳 绿地/公园显示，支持透明度调节
+- ✨ 边缘渐隐过渡效果
+- 📜 历史记录自动保存
 
 ## 安装
 
@@ -15,22 +20,93 @@
 npm install
 ```
 
-## 配置
+依赖：Node.js 16+，Sharp 图像处理库
 
-编辑 `config.json`:
+## 使用方法
+
+### 启动 Web 服务（推荐）
+
+```bash
+npm start
+```
+
+访问 http://localhost:3000 打开配置界面。
+
+### 命令行生成
+
+编辑 `config.json` 配置参数，然后运行：
+
+```bash
+npm run generate:osm
+```
+
+## Web 界面配置
+
+### 位置信息
+- 预设城市快速选择（北京、上海、广州等）
+- 自定义位置名称
+- 经纬度坐标
+
+### 地图参数
+- 缩放级别 (1-20)
+- 输出图片尺寸（宽 x 高）
+- 输出文件名
+
+### 主题设置
+- 主题色（颜色选择器）：统一设置道路、水域、绿地、建筑物等元素的基础颜色
+- 各元素通过透明度区分层次
+
+### 边框设置
+- 无边框
+- 单层边框（可调整宽度）
+- 双层边框（外层宽度、间距、内层宽度）
+
+### 河流/水域
+- 显示/隐藏开关
+- 透明度调节 (0-100%)
+- 基于真实比例的多边形填充
+
+### 绿地/公园
+- 显示/隐藏开关
+- 透明度调节 (0-100%)
+
+### 边缘过渡
+- 无：保持清晰边缘
+- 渐隐：从边缘向中心渐变透明
+- 过渡比例：调节渐隐宽度（1-50% 图片尺寸）
+
+## 配置示例
 
 ```json
 {
   "location": {
-    "name": "你的街道名称",
-    "center": [经度, 纬度],
-    "zoom": 16,
-    "width": 1200,
-    "height": 800
+    "name": "我的家",
+    "center": [116.407378, 40.047033],
+    "zoom": 17,
+    "width": 1600,
+    "height": 1600
   },
   "style": {
-    "roadColor": "#FFFFFF",
+    "themeColor": "#ffffff",
     "roadWidth": 2
+  },
+  "border": {
+    "type": "double",
+    "outerWidth": 4,
+    "gap": 20,
+    "innerWidth": 1
+  },
+  "water": {
+    "show": true,
+    "opacity": 40
+  },
+  "green": {
+    "show": true,
+    "opacity": 80
+  },
+  "fade": {
+    "type": "gradient",
+    "ratio": 15
   },
   "output": {
     "filename": "street-map.png"
@@ -38,72 +114,34 @@ npm install
 }
 ```
 
-### 获取坐标
-
-1. 打开 [OpenStreetMap](https://www.openstreetmap.org)
-2. 搜索你的街道
-3. 右键点击位置，选择 "显示地址"
-4. 复制经纬度坐标
-
-## 使用方法
-
-### 方法 1: OpenStreetMap (免费，推荐)
-
-```bash
-npm run generate:osm
-```
-
-这将：
-- 从 OpenStreetMap 获取道路数据
-- 生成白色道路、透明背景的 PNG
-
-### 方法 2: Mapbox (需要 token)
-
-1. 复制 `.env.example` 为 `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. 在 [Mapbox](https://account.mapbox.com/access-tokens/) 获取 Access Token
-
-3. 编辑 `.env` 添加你的 token:
-   ```
-   MAPBOX_ACCESS_TOKEN=pk.your_token_here
-   ```
-
-4. 运行:
-   ```bash
-   npm run generate:mapbox
-   ```
-
-## 自定义样式
-
-编辑 `config.json` 中的 `style` 部分:
-
-- `roadColor`: 道路颜色 (默认: `#FFFFFF` 白色)
-- `roadWidth`: 道路粗细 (默认: `2`)
-
 ## 输出
 
-生成的图片将保存为 `street-map.png`，可直接用于设计软件（Photoshop、Illustrator 等）。
+生成的图片保存到 `static/` 目录，文件名包含时间戳，例如：`street-map_20260509_143052.png`。
 
-## 示例
+## 技术特性
 
-生成北京天安门附近地图:
+- **OSM 数据缓存**：相同坐标和缩放级别的数据会缓存到 `.cache/` 目录，避免重复请求
+- **Web Mercator 投影**：正确处理地图长宽比，避免街道变形
+- **Sharp 图像处理**：高效的 PNG 生成
 
-```json
-{
-  "location": {
-    "name": "天安门",
-    "center": [116.3974, 39.9042],
-    "zoom": 16,
-    "width": 1200,
-    "height": 800
-  }
-}
+## 获取坐标
+
+1. 打开 [OpenStreetMap](https://www.openstreetmap.org)
+2. 搜索目标位置
+3. 右键点击地图，选择 "显示地址"
+4. 复制经纬度坐标
+
+或直接在使用 Web 界面时选择预设城市，再微调位置。
+
+## 目录结构
+
 ```
-
-运行:
-```bash
-npm run generate:osm
+mapposter/
+├── public/           # Web 界面文件
+│   ├── index.html    # 主页面
+│   └── js/           # 前端脚本
+├── static/           # 生成的图片目录
+├── .cache/           # OSM 数据缓存
+├── config.json       # 当前配置
+└── server.js         # Web 服务
 ```

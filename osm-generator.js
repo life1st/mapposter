@@ -121,7 +121,7 @@ function metersToPixels(meters, zoom, latitude = 40) {
   return meters / metersPerPixel;
 }
 
-// OpenStreetMap Overpass API 查询（包含道路、河流和绿地）
+// OpenStreetMap Overpass API 查询（包含道路、河流、绿地和建筑物）
 function buildOverpassQuery(lat, lon, radius = 500) {
   return `[out:json][timeout:30];
 (
@@ -138,6 +138,8 @@ function buildOverpassQuery(lat, lon, radius = 500) {
   way["landuse"="forest"](around:${radius},${lat},${lon});
   way["natural"="wood"](around:${radius},${lat},${lon});
   relation["leisure"="park"](around:${radius},${lat},${lon});
+  way["building"](around:${radius},${lat},${lon});
+  relation["building"](around:${radius},${lat},${lon});
 );out body;>;out skel qt;`;
 }
 
@@ -341,9 +343,16 @@ function drawDoubleBorder(pixels, width, height, outerWidth, gap, innerWidth, co
   }
 }
 
-// 扫描线填充多边形（用于河流区域填充）
-function fillPolygon(pixels, width, height, points, color, alpha = 255) {
+// 扫描线填充多边形（用于河流/绿地/建筑物填充）
+function fillPolygon(pixels, width, height, points, color, alpha = 255, rangeConfig = null) {
   if (points.length < 3) return;
+
+  // 计算中心点和范围配置
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const hasRange = rangeConfig && rangeConfig.maxDist > 0;
+  const maxDist = hasRange ? rangeConfig.maxDist : Math.max(width, height);
+  const fadeWidth = hasRange ? rangeConfig.fadeWidth : 0;
 
   // 找到多边形的y范围
   let minY = height, maxY = 0;
@@ -384,16 +393,34 @@ function fillPolygon(pixels, width, height, points, color, alpha = 255) {
       const xEnd = Math.min(width - 1, Math.ceil(intersections[i + 1]));
 
       for (let x = xStart; x <= xEnd; x++) {
+        // 计算到中心的距离
+        const distToCenter = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+
+        // 范围检查：超出最大距离的不绘制
+        if (distToCenter > maxDist) continue;
+
+        // 计算渐隐系数（在渐隐边缘区域）
+        let alphaMultiplier = 1;
+        if (hasRange && fadeWidth > 0) {
+          if (distToCenter > maxDist - fadeWidth) {
+            alphaMultiplier = (maxDist - distToCenter) / fadeWidth;
+            alphaMultiplier = Math.max(0, Math.min(1, alphaMultiplier));
+          }
+        }
+
+        const finalAlpha = Math.round(alpha * alphaMultiplier);
+        if (finalAlpha <= 0) continue;
+
         const idx = (y * width + x) * 4;
 
-        if (alpha === 255) {
+        if (finalAlpha === 255) {
           pixels[idx] = color.r;
           pixels[idx + 1] = color.g;
           pixels[idx + 2] = color.b;
           pixels[idx + 3] = 255;
         } else {
           const existingAlpha = pixels[idx + 3] / 255;
-          const newAlpha = alpha / 255;
+          const newAlpha = finalAlpha / 255;
           const outAlpha = newAlpha + existingAlpha * (1 - newAlpha);
 
           if (outAlpha > 0) {
@@ -489,10 +516,10 @@ async function generateMap() {
   console.log('=== MapToPoster - OSM 街道地图生成器 ===');
   console.log('位置:', config.location.name);
   console.log('中心坐标:', config.location.center.join(', '));
-  console.log('');
 
   const { center, zoom, width, height } = config.location;
-  const { roadColor, roadWidth } = config.style;
+  const { themeColor, roadColor, roadWidth } = config.style;
+  const baseThemeColor = themeColor || roadColor || '#ffffff';
 
   const lon = center[0];
   const lat = center[1];
@@ -545,26 +572,48 @@ async function generateMap() {
     pixels[i] = 0; // Alpha = 0
   }
 
-  // 解析颜色
-  const roadLineColor = {
-    r: parseInt(roadColor.slice(1, 3), 16) || 255,
-    g: parseInt(roadColor.slice(3, 5), 16) || 255,
-    b: parseInt(roadColor.slice(5, 7), 16) || 255
-  };
-
   // 获取配置选项（带默认值）
   const borderConfig = config.border || { type: 'double', outerWidth: 4, gap: 20, innerWidth: 1, width: 4 };
   const waterConfig = config.water || { show: true, opacity: 40 };
   const greenConfig = config.green || { show: true, opacity: 80 };
   const fadeConfig = config.fade || { type: 'gradient', ratio: 15 };
+  const buildingConfig = config.building || { show: true, opacity: 60, range: 80 };
 
-  // 水域颜色（白色，根据配置透明度）
-  const waterColor = { r: 255, g: 255, b: 255 };
+  // 解析基础颜色（支持 #RGB 或 #RRGGBB 格式）
+  function parseColor(colorStr) {
+    const color = colorStr?.toString().trim() || '#ffffff';
+    if (color.startsWith('#')) {
+      const hex = color.slice(1);
+      if (hex.length === 3) {
+        return {
+          r: parseInt(hex[0] + hex[0], 16),
+          g: parseInt(hex[1] + hex[1], 16),
+          b: parseInt(hex[2] + hex[2], 16)
+        };
+      } else if (hex.length >= 6) {
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        return {
+          r: Number.isNaN(r) ? 255 : r,
+          g: Number.isNaN(g) ? 255 : g,
+          b: Number.isNaN(b) ? 255 : b
+        };
+      }
+    }
+    return { r: 255, g: 255, b: 255 };
+  }
+
+  // 所有元素使用统一的基础颜色（主题色）
+  const baseColor = parseColor(baseThemeColor);
+  const roadLineColor = baseColor;
+  const waterColor = baseColor;
+  const greenColor = baseColor;
+  const buildingColor = baseColor;
+
   const waterAlpha = Math.round(255 * (waterConfig.opacity || 40) / 100);
-
-  // 绿地颜色（白色，根据配置透明度）
-  const greenColor = { r: 255, g: 255, b: 255 };
   const greenAlpha = Math.round(255 * (greenConfig.opacity || 80) / 100);
+  const buildingAlpha = Math.round(255 * (buildingConfig.opacity || 60) / 100);
 
   // 分类地图元素
   const roads = [];
@@ -572,6 +621,8 @@ async function generateMap() {
   const waterRelations = []; // 水域关系
   const greenPolygons = []; // 绿地多边形
   const greenRelations = []; // 绿地关系
+  const buildingPolygons = []; // 建筑物多边形
+  const buildingRelations = []; // 建筑物关系
 
   data.elements.forEach(el => {
     if (el.type === 'way' && el.nodes && el.nodes.length > 1) {
@@ -593,6 +644,8 @@ async function generateMap() {
                  tags.landuse === 'forest' ||
                  tags.natural === 'wood')) {
         greenPolygons.push(el);
+      } else if (buildingConfig.show !== false && tags.building) {
+        buildingPolygons.push(el);
       }
     } else if (el.type === 'relation' && el.members) {
       const tags = el.tags || {};
@@ -604,6 +657,8 @@ async function generateMap() {
       } else if (greenConfig.show !== false && (
           tags.leisure === 'park')) {
         greenRelations.push(el);
+      } else if (buildingConfig.show !== false && tags.building) {
+        buildingRelations.push(el);
       }
     }
   });
@@ -706,6 +761,67 @@ async function generateMap() {
     }
   }
 
+  // 绘制建筑物（在水域之上，道路之下）
+  let buildingPolygonCount = 0;
+
+  if (buildingConfig.show !== false) {
+    // 计算建筑物绘制范围（从中心开始的百分比）
+    const buildingRange = (buildingConfig.range || 80) / 100;
+    const maxBuildingDist = (Math.min(width, height) / 2) * buildingRange;
+    const fadeRatio = (fadeConfig.ratio || 15) / 100;
+    const fadeWidth = maxBuildingDist * fadeRatio;
+
+    const buildingRangeConfig = {
+      maxDist: maxBuildingDist,
+      fadeWidth: fadeWidth,
+      fadeRatio: fadeRatio
+    };
+
+    buildingPolygons.forEach(el => {
+      const points = [];
+      el.nodes.forEach(nodeId => {
+        const node = nodes[nodeId];
+        if (node) {
+          const pos = latLonToPixel(node.lon, node.lat, bounds, width, height);
+          points.push(pos);
+        }
+      });
+
+      if (points.length >= 3) {
+        fillPolygon(pixels, width, height, points, buildingColor, buildingAlpha, buildingRangeConfig);
+        buildingPolygonCount++;
+      }
+    });
+
+    // 处理关系类型的建筑物
+    buildingRelations.forEach(rel => {
+      const outerWays = rel.members.filter(m => m.type === 'way' && (m.role === 'outer' || m.role === ''));
+
+      outerWays.forEach(member => {
+        const way = data.elements.find(e => e.type === 'way' && e.id === member.ref);
+        if (way && way.nodes) {
+          const points = [];
+          way.nodes.forEach(nodeId => {
+            const node = nodes[nodeId];
+            if (node) {
+              const pos = latLonToPixel(node.lon, node.lat, bounds, width, height);
+              points.push(pos);
+            }
+          });
+
+          if (points.length >= 3) {
+            fillPolygon(pixels, width, height, points, buildingColor, buildingAlpha, buildingRangeConfig);
+            buildingPolygonCount++;
+          }
+        }
+      });
+    });
+
+    if (buildingPolygonCount > 0) {
+      console.log(`✓ 绘制了 ${buildingPolygonCount} 个建筑物 (${buildingConfig.opacity || 60}%透明度, ${buildingConfig.range || 80}%范围)`);
+    }
+  }
+
   // 绘制道路（根据等级调整宽度）
   let roadSegmentCount = 0;
 
@@ -784,7 +900,7 @@ async function generateMap() {
 
   console.log(`\n✅ 地图已保存到: ${path.basename(outputFilename)}`);
   console.log(`   尺寸: ${width}x${height}`);
-  console.log(`   道路颜色: ${roadColor}`);
+  console.log(`   主题色: ${baseThemeColor}`);
   console.log(`   背景: 透明`);
   console.log(`   投影: Web Mercator (修正长宽比)`);
   if (borderType === 'double') {
@@ -800,6 +916,11 @@ async function generateMap() {
     console.log(`   边缘渐隐: ${fadeWidth}px渐变 (图片尺寸${Math.round(fadeRatio * 100)}%)`);
   } else {
     console.log(`   边缘过渡: 无`);
+  }
+  if (buildingConfig.show !== false) {
+    console.log(`   建筑物: ${buildingConfig.opacity || 60}%透明度, ${buildingConfig.range || 80}%范围`);
+  } else {
+    console.log(`   建筑物: 不显示`);
   }
 }
 

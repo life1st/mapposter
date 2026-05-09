@@ -49,8 +49,8 @@ async function main() {
       height: Number(height) || config.location?.height || 800
     },
     style: {
-      roadColor: '#FFFFFF',
-      roadWidth: Number(roadWidth) || config.style?.roadWidth || 2,
+      themeColor: '#ffffff',
+      roadWidth: 2,
       background: 'transparent',
       showLabels: false,
       showBuildings: false,

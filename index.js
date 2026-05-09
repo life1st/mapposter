@@ -19,7 +19,7 @@ console.log(`  位置: ${config.location.name}`);
 console.log(`  坐标: ${config.location.center.join(', ')}`);
 console.log(`  缩放: ${config.location.zoom}`);
 console.log(`  尺寸: ${config.location.width}x${config.location.height}`);
-console.log(`  道路颜色: ${config.style.roadColor}`);
+console.log(`  主题色: ${config.style.themeColor || config.style.roadColor || '#ffffff'}`);
 console.log('');
 
 const provider = config.provider || 'osm';

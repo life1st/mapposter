@@ -43,7 +43,7 @@ const Config = {
         height: 1600
       },
       style: {
-        roadColor: '#ffffff',
+        themeColor: '#ffffff',
         roadWidth: 2,
         background: 'transparent',
         showLabels: false,
@@ -59,6 +59,7 @@ const Config = {
       },
       water: { show: true, opacity: 40 },
       green: { show: true, opacity: 80 },
+      building: { show: true, opacity: 60, range: 80 },
       fade: { type: 'gradient', ratio: 15 },
       output: { filename: 'street-map.png', format: 'png' },
       provider: 'osm'

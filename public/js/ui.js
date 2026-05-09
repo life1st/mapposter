@@ -23,10 +23,10 @@ const UI = {
   },
 
   bindEvents() {
-    // 颜色选择器实时预览
-    const roadColor = document.getElementById('roadColor');
-    if (roadColor) {
-      roadColor.addEventListener('input', () => this.updateColorPreview());
+    // 主题色选择器实时预览
+    const themeColor = document.getElementById('themeColor');
+    if (themeColor) {
+      themeColor.addEventListener('input', () => this.updateColorPreview());
     }
 
     // 边框类型切换
@@ -64,7 +64,7 @@ const UI = {
   },
 
   updateColorPreview() {
-    const color = document.getElementById('roadColor').value;
+    const color = document.getElementById('themeColor').value;
     const preview = document.getElementById('colorPreview');
     if (preview) {
       preview.style.backgroundColor = color;
@@ -92,9 +92,9 @@ const UI = {
     document.getElementById('width').value = config.location.width;
     document.getElementById('height').value = config.location.height;
 
-    // 样式
-    document.getElementById('roadColor').value = ColorUtils.normalize(config.style.roadColor);
-    document.getElementById('roadWidth').value = config.style.roadWidth;
+    // 主题色（兼容旧配置的roadColor）
+    const themeColor = config.style.themeColor || config.style.roadColor || '#ffffff';
+    document.getElementById('themeColor').value = ColorUtils.normalize(themeColor);
 
     // 输出
     document.getElementById('filename').value = config.output.filename;
@@ -120,6 +120,13 @@ const UI = {
       document.getElementById('greenOpacity').value = config.green.opacity || 80;
     }
 
+    // 建筑物设置
+    if (config.building) {
+      document.getElementById('showBuilding').checked = config.building.show !== false;
+      document.getElementById('buildingOpacity').value = config.building.opacity || 60;
+      document.getElementById('buildingRange').value = config.building.range || 80;
+    }
+
     // 边缘过渡
     if (config.fade) {
       document.getElementById('fadeType').value = config.fade.type || 'gradient';
@@ -140,8 +147,7 @@ const UI = {
     document.getElementById('zoom').value = defaults.location.zoom;
     document.getElementById('width').value = defaults.location.width;
     document.getElementById('height').value = defaults.location.height;
-    document.getElementById('roadColor').value = defaults.style.roadColor;
-    document.getElementById('roadWidth').value = defaults.style.roadWidth;
+    document.getElementById('themeColor').value = defaults.style.themeColor;
     document.getElementById('filename').value = defaults.output.filename;
     document.getElementById('borderType').value = defaults.border.type;
     document.getElementById('borderWidth').value = defaults.border.width;
@@ -152,6 +158,9 @@ const UI = {
     document.getElementById('waterOpacity').value = defaults.water.opacity;
     document.getElementById('showGreen').checked = defaults.green.show;
     document.getElementById('greenOpacity').value = defaults.green.opacity;
+    document.getElementById('showBuilding').checked = defaults.building.show;
+    document.getElementById('buildingOpacity').value = defaults.building.opacity;
+    document.getElementById('buildingRange').value = defaults.building.range;
     document.getElementById('fadeType').value = defaults.fade.type;
     document.getElementById('fadeRatio').value = defaults.fade.ratio;
 
