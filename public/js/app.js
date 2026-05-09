@@ -4,7 +4,9 @@ document.addEventListener('DOMContentLoaded', function() {
   UI.init();
   Preview.init();
 
-  // 加载配置和图库
+  // 加载配置
   UI.loadConfig();
+
+  // 加载历史记录（会自动设置默认预览）
   Gallery.load();
 });

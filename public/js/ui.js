@@ -194,3 +194,30 @@ function resetZoom() {
 function togglePreviewTheme() {
   Preview.toggleTheme();
 }
+
+// 当前激活的 tab
+let currentTab = 'edit';
+
+// 切换 tab
+function switchTab(tab) {
+  currentTab = tab;
+
+  // 更新 tab 按钮状态
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+
+  // 更新面板显示
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === tab + 'Tab');
+  });
+
+  // 根据 tab 更新预览区域
+  if (tab === 'history') {
+    // 切换到历史记录时，显示第一张图或提示
+    Gallery.showFirstImage();
+  } else {
+    // 切换到编辑时，显示最后生成的图或提示
+    Gallery.showLatestOrPlaceholder();
+  }
+}

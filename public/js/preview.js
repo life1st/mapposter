@@ -164,15 +164,22 @@ const Preview = {
   },
 
   show(filename) {
-    const { wrapper, placeholder, controls } = this.elements;
-    if (!wrapper || !placeholder || !controls) {
-      console.error('Preview elements not found');
+    const { wrapper, controls } = this.elements;
+    if (!wrapper) {
+      console.error('Preview wrapper not found');
       return;
     }
 
-    placeholder.style.display = 'none';
-    wrapper.innerHTML = `<img src="/static/${filename}" class="preview-image" id="currentImage" alt="地图" draggable="false">`;
-    controls.style.display = 'flex';
+    // 确保文件名格式正确
+    const cleanFilename = filename.replace(/^\//, '');
+    const imageUrl = cleanFilename.startsWith('static/') ? `/${cleanFilename}` : `/static/${cleanFilename}`;
+
+    wrapper.innerHTML = `<img src="${imageUrl}" class="preview-image" id="currentImage" alt="地图" draggable="false">`;
+
+    if (controls) {
+      controls.style.display = 'flex';
+    }
+
     this.reset();
   },
 

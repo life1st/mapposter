@@ -103,6 +103,9 @@ const MapGenerator = {
     messageBox.textContent = '地图生成成功！';
     messageBox.className = 'message success';
 
+    // 切换到编辑 tab 并显示生成的图片
+    switchTab('edit');
+
     if (result.filename) {
       Preview.showGenerated(result.filename);
     }
