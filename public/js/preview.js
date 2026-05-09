@@ -8,6 +8,7 @@ const Preview = {
   startY: 0,
   lastX: 0,
   lastY: 0,
+  isLightTheme: false,
 
   MIN_SCALE: 0.5,
   MAX_SCALE: 5,
@@ -21,11 +22,20 @@ const Preview = {
       wrapper: document.getElementById('previewWrapper'),
       placeholder: document.getElementById('previewPlaceholder'),
       controls: document.getElementById('previewControls'),
-      zoomLevel: document.getElementById('zoomLevel')
+      zoomLevel: document.getElementById('zoomLevel'),
+      previewArea: document.getElementById('previewArea')
     };
 
     this.bindEvents();
     return this;
+  },
+
+  toggleTheme() {
+    this.isLightTheme = !this.isLightTheme;
+    const { previewArea } = this.elements;
+    if (previewArea) {
+      previewArea.classList.toggle('light', this.isLightTheme);
+    }
   },
 
   bindEvents() {

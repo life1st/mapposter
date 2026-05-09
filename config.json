@@ -35,7 +35,7 @@
   "building": {
     "show": true,
     "opacity": 40,
-    "range": 60
+    "range": 80
   },
   "output": {
     "filename": "street-map1.png",

@@ -190,3 +190,7 @@ function zoomOut() {
 function resetZoom() {
   Preview.reset();
 }
+
+function togglePreviewTheme() {
+  Preview.toggleTheme();
+}
