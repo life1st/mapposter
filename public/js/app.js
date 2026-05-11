@@ -1,3 +1,10 @@
+// 禁止 number input 响应滚轮
+document.addEventListener('wheel', function(e) {
+  if (document.activeElement && document.activeElement.type === 'number') {
+    document.activeElement.blur();
+  }
+}, { passive: false });
+
 // 主应用入口
 document.addEventListener('DOMContentLoaded', function() {
   // 初始化各模块

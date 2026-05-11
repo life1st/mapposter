@@ -251,7 +251,11 @@
     }
 
     .form-group {
-      margin-bottom: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 8px;
+      margin-bottom: 8px;
     }
 
     .form-group:last-child {
@@ -259,23 +263,32 @@
     }
 
     .form-group label {
-      display: block;
-      margin-bottom: 5px;
+      flex-shrink: 0;
       font-size: 13px;
       font-weight: 500;
       color: #555;
+      white-space: nowrap;
     }
 
     .form-group input[type="text"],
     .form-group input[type="number"],
-    .form-group input[type="color"],
     .form-group select {
-      width: 100%;
-      padding: 8px 12px;
+      flex: 1;
+      min-width: 0;
+      padding: 6px 10px;
       border: 1px solid #ddd;
       border-radius: 6px;
       font-size: 13px;
       transition: border-color 0.2s;
+    }
+
+    .form-group input[type="color"] {
+      width: 48px;
+      height: 32px;
+      padding: 2px 4px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
     }
 
     .form-group input:focus,
@@ -284,16 +297,21 @@
       border-color: #3498db;
     }
 
+    .form-hint {
+      flex-basis: 100%;
+      font-size: 11px;
+      color: #999;
+    }
+
     .form-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
+      margin-bottom: 8px;
     }
 
-    .form-hint {
-      font-size: 11px;
-      color: #7f8c8d;
-      margin-top: 3px;
+    .form-row .form-group {
+      margin-bottom: 0;
     }
 
     .checkbox-group {
@@ -961,11 +979,9 @@
                   <input type="number" id="lat" step="0.000001" placeholder="40.047033">
                 </div>
               </div>
-              <div class="form-group">
-                <button type="button" class="btn btn-map" onclick="openMapModal()">
-                  📍 在地图上选择位置
-                </button>
-              </div>
+              <button type="button" class="btn btn-map" onclick="openMapModal()">
+                📍 在地图上选择位置
+              </button>
 
               <!-- 坐标历史记录 -->
               <div class="location-history" id="locationHistory">
