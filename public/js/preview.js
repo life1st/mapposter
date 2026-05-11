@@ -180,10 +180,11 @@ const Preview = {
       controls.style.display = 'flex';
     }
 
-    this.reset();
+    this.updateTransform();
   },
 
   showGenerated(filename) {
+    this.reset();
     this.show(filename + '?t=' + Date.now());
   }
 };
