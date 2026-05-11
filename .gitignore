@@ -8,6 +8,7 @@ pnpm-lock.yaml
 .cache/
 
 # Generated files
+static/
 *.png
 *.jpg
 *.jpeg

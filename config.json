@@ -1,14 +1,14 @@
 {
   "location": {
-    "name": "lisuiqiao",
+    "name": "深圳市民中心",
     "center": [
-      116.46615,
-      39.992387
+      114.001865,
+      22.456504
     ],
     "zoom": 17,
     "width": 3200,
     "height": 3200,
-    "boundaryShape": "around"
+    "boundaryShape": "bbox"
   },
   "style": {
     "themeColor": "#ffffff",
@@ -19,23 +19,23 @@
     "showPois": false
   },
   "border": {
-    "type": "none",
+    "type": "double",
     "width": 4,
-    "outerWidth": 4,
-    "gap": 20,
-    "innerWidth": 1
+    "outerWidth": 6,
+    "gap": 40,
+    "innerWidth": 2
   },
   "water": {
-    "show": true,
+    "show": false,
     "opacity": 70
   },
   "green": {
-    "show": false,
+    "show": true,
     "opacity": 30
   },
   "building": {
     "show": true,
-    "opacity": 40,
+    "opacity": 50,
     "range": 80
   },
   "output": {
@@ -44,7 +44,7 @@
   },
   "fade": {
     "type": "gradient",
-    "ratio": 25
+    "ratio": 17
   },
   "provider": "osm"
 }

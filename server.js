@@ -84,6 +84,18 @@ function runGenerator(task, config) {
     const match = task.output.match(/地图已保存到: (.+\.png)/);
     task.filename = match ? match[1] : null;
 
+    // Save config JSON alongside the PNG
+    if (task.filename) {
+      try {
+        const configPath = path.join(__dirname, 'config.json');
+        const pngBase = path.basename(task.filename, '.png');
+        const jsonPath = path.join(STATIC_DIR, pngBase + '.json');
+        fs.copyFileSync(configPath, jsonPath);
+      } catch (e) {
+        console.warn('[Server] Failed to save config JSON:', e.message);
+      }
+    }
+
     if (code === 0 && task.status !== 'stopped') {
       task.status = 'completed';
     } else if (task.status !== 'stopped') {
@@ -304,13 +316,33 @@ app.get('/api/images', (req, res) => {
       .map(f => ({
         name: f,
         url: `/static/${f}`,
-        time: fs.statSync(path.join(STATIC_DIR, f)).mtime
+        time: fs.statSync(path.join(STATIC_DIR, f)).mtime,
+        hasConfig: fs.existsSync(path.join(STATIC_DIR, f.replace(/\.png$/, '.json')))
       }))
       .sort((a, b) => b.time - a.time);
 
     res.json(files);
   } catch (e) {
     res.status(500).json({ error: '读取图片列表失败' });
+  }
+});
+
+// 获取图片对应的配置
+app.get('/api/images/:filename/config', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(400).json({ error: '非法文件名' });
+    }
+    const base = filename.replace(/\.png$/, '');
+    const jsonPath = path.join(STATIC_DIR, base + '.json');
+    if (!fs.existsSync(jsonPath)) {
+      return res.status(404).json({ error: '配置文件不存在' });
+    }
+    const config = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+    res.json(config);
+  } catch (e) {
+    res.status(500).json({ error: '读取配置失败: ' + e.message });
   }
 });
 
@@ -330,8 +362,10 @@ app.delete('/api/images/:filename', (req, res) => {
       return res.status(404).json({ error: '文件不存在' });
     }
 
-    // 删除文件
+    // 删除文件及对应配置
     fs.unlinkSync(filePath);
+    const jsonPath = path.join(STATIC_DIR, filename.replace(/\.png$/, '.json'));
+    if (fs.existsSync(jsonPath)) fs.unlinkSync(jsonPath);
     res.json({ success: true, message: '删除成功' });
   } catch (e) {
     res.status(500).json({ error: '删除失败: ' + e.message });

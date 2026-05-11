@@ -45,6 +45,7 @@ const Gallery = {
     let html = displayedImages.map((img, index) => `
       <div class="gallery-item ${index === 0 ? 'active' : ''}" data-filename="${img.name}" data-index="${index}">
         <img src="${img.url}" alt="${img.name}" loading="lazy">
+        ${img.hasConfig ? `<button class="gallery-copy" data-filename="${img.name}" title="复制配置">⧉</button>` : ''}
         <button class="gallery-delete" data-filename="${img.name}" title="删除">×</button>
       </div>
     `).join('');
@@ -61,7 +62,7 @@ const Gallery = {
 
     gallery.innerHTML = html;
 
-    this.rebindEvents();
+    this.initEvents();
   },
 
   selectImage(filename, index) {
@@ -120,31 +121,49 @@ const Gallery = {
   loadMore() {
     this.displayCount += this.DISPLAY_INCREMENT;
     this.render(this.images);
-    this.rebindEvents();
   },
 
-  rebindEvents() {
+  initEvents() {
     const gallery = document.getElementById('gallery');
-    if (!gallery) return;
+    if (!gallery || gallery._delegated) return;
+    gallery._delegated = true;
 
-    // 重新绑定点击事件
-    gallery.querySelectorAll('.gallery-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        if (e.target.classList.contains('gallery-delete')) return;
-        const filename = item.dataset.filename;
-        const index = parseInt(item.dataset.index);
-        this.selectImage(filename, index);
-      });
-    });
-
-    // 重新绑定删除按钮事件
-    gallery.querySelectorAll('.gallery-delete').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+    gallery.addEventListener('click', (e) => {
+      const deleteBtn = e.target.closest('.gallery-delete');
+      if (deleteBtn) {
         e.stopPropagation();
-        const filename = btn.dataset.filename;
-        this.deleteImage(filename);
-      });
+        this.deleteImage(deleteBtn.dataset.filename);
+        return;
+      }
+
+      const copyBtn = e.target.closest('.gallery-copy');
+      if (copyBtn) {
+        e.stopPropagation();
+        this.copyConfig(copyBtn.dataset.filename);
+        return;
+      }
+
+      const item = e.target.closest('.gallery-item');
+      if (item) {
+        this.selectImage(item.dataset.filename, parseInt(item.dataset.index));
+      }
     });
+  },
+
+  async copyConfig(filename) {
+    try {
+      const res = await fetch(`/api/images/${encodeURIComponent(filename)}/config`);
+      if (!res.ok) {
+        alert('未找到该记录的配置文件');
+        return;
+      }
+      const config = await res.json();
+      await UI.loadConfigObject(config);
+      switchTab('edit');
+    } catch (e) {
+      console.error('复制配置失败:', e);
+      alert('复制配置失败: ' + e.message);
+    }
   },
 
   async deleteImage(filename) {

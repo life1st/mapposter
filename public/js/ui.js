@@ -80,9 +80,18 @@ const UI = {
     }
   },
 
+  async loadConfigObject(config) {
+    if (!config) return;
+    this._applyConfig(config);
+  },
+
   async loadConfig() {
     const config = await Config.load();
     if (!config) return;
+    this._applyConfig(config);
+  },
+
+  _applyConfig(config) {
 
     // 位置信息
     document.getElementById('locationName').value = config.location.name || '';
@@ -292,7 +301,6 @@ function confirmMapSelection() {
   if (selectedLat && selectedLon) {
     document.getElementById('lat').value = selectedLat.toFixed(6);
     document.getElementById('lon').value = selectedLon.toFixed(6);
-    // 保存到历史记录
     saveCurrentLocation();
   }
   closeMapModal();
