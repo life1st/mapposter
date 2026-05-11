@@ -142,6 +142,13 @@ const UI = {
       document.getElementById('buildingRange').value = config.building.range || 80;
     }
 
+    if (config.railway) {
+      document.getElementById('showRailway').checked = config.railway.show !== false;
+      document.getElementById('railwayWidthMultiplier').value = config.railway.widthMultiplier ?? 2.0;
+      document.getElementById('railwayTieSpacing').value = config.railway.tieSpacing ?? 6;
+      document.getElementById('railwayTieLength').value = config.railway.tieLength ?? 0.6;
+    }
+
     // 边缘过渡
     if (config.fade) {
       document.getElementById('fadeType').value = config.fade.type || 'gradient';
@@ -182,6 +189,10 @@ const UI = {
     document.getElementById('showBuilding').checked = defaults.building.show;
     document.getElementById('buildingOpacity').value = defaults.building.opacity;
     document.getElementById('buildingRange').value = defaults.building.range;
+    document.getElementById('showRailway').checked = defaults.railway.show;
+    document.getElementById('railwayWidthMultiplier').value = defaults.railway.widthMultiplier;
+    document.getElementById('railwayTieSpacing').value = defaults.railway.tieSpacing;
+    document.getElementById('railwayTieLength').value = defaults.railway.tieLength;
     document.getElementById('fadeType').value = defaults.fade.type;
     document.getElementById('fadeRatio').value = defaults.fade.ratio;
 
@@ -320,7 +331,7 @@ function saveCurrentLocation() {
   renderLocationHistory();
 }
 
-function renderLocationHistory() {
+function renderLocationHistory(expanded = false) {
   const container = document.getElementById('historyList');
   if (!container) return;
 
@@ -331,7 +342,11 @@ function renderLocationHistory() {
     return;
   }
 
-  container.innerHTML = history.map((item, index) => `
+  const limit = expanded ? history.length : LocationHistory.DEFAULT_DISPLAY;
+  const displayed = history.slice(0, limit);
+  const remaining = history.length - limit;
+
+  let html = displayed.map((item, index) => `
     <div class="history-item" onclick="applyLocationHistory(${index})">
       <span class="history-item-coords">${item.lon.toFixed(4)}, ${item.lat.toFixed(4)}</span>
       <input type="text"
@@ -345,6 +360,12 @@ function renderLocationHistory() {
               title="删除">&times;</button>
     </div>
   `).join('');
+
+  if (remaining > 0) {
+    html += `<div class="history-show-more" onclick="renderLocationHistory(true)">查看剩下 ${remaining} 条</div>`;
+  }
+
+  container.innerHTML = html;
 }
 
 function applyLocationHistory(index) {

@@ -1,9 +1,9 @@
 {
   "location": {
-    "name": "深圳市民中心",
+    "name": "lisuiqiao",
     "center": [
-      114.001865,
-      22.456504
+      116.407313,
+      40.051061
     ],
     "zoom": 17,
     "width": 3200,
@@ -37,6 +37,12 @@
     "show": true,
     "opacity": 50,
     "range": 80
+  },
+  "railway": {
+    "show": true,
+    "widthMultiplier": 0.75,
+    "tieSpacing": 15,
+    "tieLength": 1.6
   },
   "output": {
     "filename": "street-map1.png",

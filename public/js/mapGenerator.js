@@ -220,6 +220,12 @@ const MapGenerator = {
         opacity: parseInt(document.getElementById('buildingOpacity').value) || 60,
         range: parseInt(document.getElementById('buildingRange').value) || 80
       },
+      railway: {
+        show: document.getElementById('showRailway').checked,
+        widthMultiplier: parseFloat(document.getElementById('railwayWidthMultiplier').value) || 2.0,
+        tieSpacing: parseFloat(document.getElementById('railwayTieSpacing').value) || 6,
+        tieLength: parseFloat(document.getElementById('railwayTieLength').value) || 0.6
+      },
       output: {
         filename: document.getElementById('filename').value || 'street-map.png',
         format: 'png'

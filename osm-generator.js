@@ -58,11 +58,48 @@ function readCache(cacheKey) {
   return null;
 }
 
-// 写入缓存数据
+// 验证缓存数据是否可用
+function validateCacheData(data) {
+  if (!data || !Array.isArray(data.elements)) return '缺少 elements 字段';
+  const hasNodes = data.elements.some(el => el.type === 'node');
+  if (!hasNodes) return '缺少节点数据';
+  const hasWays = data.elements.some(el => el.type === 'way' && el.nodes?.length > 1);
+  if (!hasWays) return '缺少 way 数据';
+  return null; // null 表示合法
+}
+
+const WAY_TAGS = new Set(['highway', 'railway', 'waterway', 'natural', 'water', 'leisure', 'landuse', 'building', 'width']);
+
+function stripElement(el) {
+  if (el.type === 'node') {
+    return { type: 'node', id: el.id, lat: el.lat, lon: el.lon };
+  }
+  if (el.type === 'way') {
+    const tags = {};
+    for (const k of WAY_TAGS) {
+      if (el.tags?.[k] !== undefined) tags[k] = el.tags[k];
+    }
+    return { type: 'way', id: el.id, nodes: el.nodes, tags };
+  }
+  if (el.type === 'relation') {
+    const tags = {};
+    for (const k of WAY_TAGS) {
+      if (el.tags?.[k] !== undefined) tags[k] = el.tags[k];
+    }
+    const members = (el.members || [])
+      .filter(m => m.type === 'way')
+      .map(m => ({ type: m.type, role: m.role, ref: m.ref }));
+    return { type: 'relation', tags, members };
+  }
+  return null;
+}
+
+// 写入缓存数据（只保存用到的字段）
 function writeCache(cacheKey, data) {
   const cachePath = getCachePath(cacheKey);
   try {
-    fs.writeFileSync(cachePath, JSON.stringify(data));
+    const elements = data.elements.map(stripElement).filter(Boolean);
+    fs.writeFileSync(cachePath, JSON.stringify({ elements }));
   } catch (e) {
     console.log(`  ⚠ 缓存写入失败: ${e.message}`);
   }
@@ -132,9 +169,24 @@ const ROAD_WIDTH_MULTIPLIERS = {
   default: 1.5
 };
 
+const RAILWAY_WIDTH_MULTIPLIERS = {
+  rail: 2.5,
+  subway: 2.0,
+  light_rail: 2.0,
+  tram: 1.5,
+  monorail: 1.5,
+  narrow_gauge: 1.5,
+  default: 2.0
+};
+
 // 获取道路宽度
 function getRoadWidth(highwayType, baseWidth) {
   const multiplier = ROAD_WIDTH_MULTIPLIERS[highwayType] || ROAD_WIDTH_MULTIPLIERS.default;
+  return Math.round(baseWidth * multiplier);
+}
+
+function getRailwayWidth(railwayType, baseWidth) {
+  const multiplier = RAILWAY_WIDTH_MULTIPLIERS[railwayType] || RAILWAY_WIDTH_MULTIPLIERS.default;
   return Math.round(baseWidth * multiplier);
 }
 
@@ -198,6 +250,7 @@ function buildOverpassQuery(lat, lon, radius = 500, boundaryShape = 'bbox') {
   return `[out:json][timeout:30];
 (
   way["highway"](${areaFilter});
+  way["railway"~"^(rail|subway|light_rail|tram|monorail|narrow_gauge)$"](${areaFilter});
   way["waterway"="riverbank"](${areaFilter});
   way["natural"="water"](${areaFilter});
   relation["waterway"="riverbank"](${areaFilter});
@@ -714,6 +767,34 @@ function drawLine(pixels, width, height, x0, y0, x1, y1, color, thickness, alpha
   }
 }
 
+// 铁路枕木样式：中心线 + 等间距垂直短横线
+function drawRailway(pixels, width, height, x0, y0, x1, y1, color, thickness, tieSpacing, tieLength) {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len === 0) return;
+
+  const ux = dx / len;
+  const uy = dy / len;
+  const px = -uy; // 垂直方向
+  const py = ux;
+
+  drawLine(pixels, width, height, x0, y0, x1, y1, color, thickness);
+
+  const spacing = thickness * tieSpacing;
+  const tieHalf = Math.ceil(thickness * tieLength);
+
+  for (let d = spacing / 2; d < len; d += spacing) {
+    const cx = Math.round(x0 + ux * d);
+    const cy = Math.round(y0 + uy * d);
+    drawLine(pixels, width, height,
+      Math.round(cx - px * tieHalf), Math.round(cy - py * tieHalf),
+      Math.round(cx + px * tieHalf), Math.round(cy + py * tieHalf),
+      color, 1
+    );
+  }
+}
+
 async function generateMap() {
   try {
     console.log('=== MapToPoster - OSM 街道地图生成器 ===');
@@ -738,17 +819,11 @@ async function generateMap() {
   const cacheKey = generateCacheKey(center, zoom, boundaryShape);
   let data = readCache(cacheKey);
 
-  // 验证缓存数据完整性
-  if (data && !data.elements) {
-    console.log('  ⚠ 缓存数据无效，重新获取...');
-    data = null;
-  }
-
-  // 检查缓存中是否有节点数据（超时查询可能只返回ways没有nodes）
-  if (data && data.elements) {
-    const hasNodes = data.elements.some(el => el.type === 'node');
-    if (!hasNodes) {
-      console.log('  ⚠ 缓存数据不完整（缺少节点），重新获取...');
+  // 验证缓存
+  if (data) {
+    const cacheError = validateCacheData(data);
+    if (cacheError) {
+      console.log(`  ⚠ 缓存数据异常（${cacheError}），重新获取...`);
       data = null;
     }
   }
@@ -760,7 +835,10 @@ async function generateMap() {
 
     try {
       data = await fetchOverpassData(buildOverpassQuery(lat, lon, radius, boundaryShape));
-      // 保存到缓存
+      const fetchError = validateCacheData(data);
+      if (fetchError) {
+        throw new Error(`获取的数据异常：${fetchError}`);
+      }
       writeCache(cacheKey, data);
       console.log(`  ✓ 数据已缓存 (${cacheKey})`);
     } catch (e) {
@@ -768,7 +846,6 @@ async function generateMap() {
       console.log('\n可能的解决方案:');
       console.log('1. 检查网络连接');
       console.log('2. 稍后重试（Overpass API 可能有使用限制）');
-      console.log('3. 尝试使用 Mapbox 版本: npm run generate:mapbox');
       throw e;
     }
   }
@@ -803,6 +880,7 @@ async function generateMap() {
   const greenConfig = config.green || { show: true, opacity: 80 };
   const fadeConfig = config.fade || { type: 'gradient', ratio: 15 };
   const buildingConfig = config.building || { show: true, opacity: 60, range: 80 };
+  const railwayConfig = config.railway || { show: true, widthMultiplier: 0.75, tieSpacing: 15, tieLength: 1.6 };
 
   // 解析基础颜色（支持 #RGB 或 #RRGGBB 格式）
   function parseColor(colorStr) {
@@ -852,7 +930,7 @@ async function generateMap() {
   data.elements.forEach(el => {
     if (el.type === 'way' && el.nodes && el.nodes.length > 1) {
       const tags = el.tags || {};
-      if (tags.highway) {
+      if (tags.highway || tags.railway) {
         roads.push(el);
       } else if (waterConfig.show !== false && (tags.waterway === 'riverbank' ||
                  tags.natural === 'water' ||
@@ -1068,17 +1146,31 @@ async function generateMap() {
       });
     }
 
-    // 根据道路等级获取线宽
-    const highwayType = el.tags?.highway;
-    const currentRoadWidth = getRoadWidth(highwayType, roadWidth);
+    const isRailway = !!el.tags?.railway;
+    if (isRailway && railwayConfig.show === false) return;
+
+    const currentRoadWidth = isRailway
+      ? Math.round(roadWidth * (railwayConfig.widthMultiplier || 2.0))
+      : getRoadWidth(el.tags?.highway, roadWidth);
 
     for (let i = 0; i < points.length - 1; i++) {
-      drawLine(
-        pixels, width, height,
-        points[i].x, points[i].y,
-        points[i + 1].x, points[i + 1].y,
-        roadLineColor, currentRoadWidth
-      );
+      if (isRailway) {
+        drawRailway(
+          pixels, width, height,
+          points[i].x, points[i].y,
+          points[i + 1].x, points[i + 1].y,
+          roadLineColor, currentRoadWidth,
+          railwayConfig.tieSpacing || 6,
+          railwayConfig.tieLength || 0.6
+        );
+      } else {
+        drawLine(
+          pixels, width, height,
+          points[i].x, points[i].y,
+          points[i + 1].x, points[i + 1].y,
+          roadLineColor, currentRoadWidth
+        );
+      }
       roadSegmentCount++;
     }
   });
