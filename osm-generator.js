@@ -768,7 +768,8 @@ function drawLine(pixels, width, height, x0, y0, x1, y1, color, thickness, alpha
 }
 
 // 铁路枕木样式：中心线 + 等间距垂直短横线
-function drawRailway(pixels, width, height, x0, y0, x1, y1, color, thickness, tieSpacing, tieLength) {
+// baseWidth 为枕木尺寸的基准（不随线宽倍数变化）
+function drawRailway(pixels, width, height, x0, y0, x1, y1, color, thickness, tieSpacing, tieLength, baseWidth) {
   const dx = x1 - x0;
   const dy = y1 - y0;
   const len = Math.sqrt(dx * dx + dy * dy);
@@ -781,8 +782,9 @@ function drawRailway(pixels, width, height, x0, y0, x1, y1, color, thickness, ti
 
   drawLine(pixels, width, height, x0, y0, x1, y1, color, thickness);
 
-  const spacing = thickness * tieSpacing;
-  const tieHalf = Math.ceil(thickness * tieLength);
+  const base = baseWidth || thickness;
+  const spacing = base * tieSpacing;
+  const tieHalf = Math.ceil(base * tieLength);
 
   for (let d = spacing / 2; d < len; d += spacing) {
     const cx = Math.round(x0 + ux * d);
@@ -880,7 +882,7 @@ async function generateMap() {
   const greenConfig = config.green || { show: true, opacity: 80 };
   const fadeConfig = config.fade || { type: 'gradient', ratio: 15 };
   const buildingConfig = config.building || { show: true, opacity: 60, range: 80 };
-  const railwayConfig = config.railway || { show: true, widthMultiplier: 0.75, tieSpacing: 15, tieLength: 1.6 };
+  const railwayConfig = config.railway || { show: true, lineWidth: 2, tieSpacing: 15, tieLength: 1.6 };
 
   // 解析基础颜色（支持 #RGB 或 #RRGGBB 格式）
   function parseColor(colorStr) {
@@ -1150,7 +1152,7 @@ async function generateMap() {
     if (isRailway && railwayConfig.show === false) return;
 
     const currentRoadWidth = isRailway
-      ? Math.round(roadWidth * (railwayConfig.widthMultiplier || 2.0))
+      ? Math.max(1, railwayConfig.lineWidth || 2)
       : getRoadWidth(el.tags?.highway, roadWidth);
 
     for (let i = 0; i < points.length - 1; i++) {
@@ -1160,8 +1162,9 @@ async function generateMap() {
           points[i].x, points[i].y,
           points[i + 1].x, points[i + 1].y,
           roadLineColor, currentRoadWidth,
-          railwayConfig.tieSpacing || 6,
-          railwayConfig.tieLength || 0.6
+          railwayConfig.tieSpacing || 15,
+          railwayConfig.tieLength || 1.6,
+          roadWidth
         );
       } else {
         drawLine(

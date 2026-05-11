@@ -222,9 +222,9 @@ const MapGenerator = {
       },
       railway: {
         show: document.getElementById('showRailway').checked,
-        widthMultiplier: parseFloat(document.getElementById('railwayWidthMultiplier').value) || 2.0,
-        tieSpacing: parseFloat(document.getElementById('railwayTieSpacing').value) || 6,
-        tieLength: parseFloat(document.getElementById('railwayTieLength').value) || 0.6
+        lineWidth: parseFloat(document.getElementById('railwayLineWidth').value) || 2,
+        tieSpacing: parseFloat(document.getElementById('railwayTieSpacing').value) || 15,
+        tieLength: parseFloat(document.getElementById('railwayTieLength').value) || 1.6
       },
       output: {
         filename: document.getElementById('filename').value || 'street-map.png',

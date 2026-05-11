@@ -1,11 +1,11 @@
 {
   "location": {
-    "name": "环铁",
+    "name": "lisuiqiao",
     "center": [
-      116.520953,
-      39.988945
+      116.407313,
+      40.051061
     ],
-    "zoom": 16,
+    "zoom": 17,
     "width": 3200,
     "height": 3200,
     "boundaryShape": "bbox"
@@ -39,8 +39,8 @@
     "range": 80
   },
   "railway": {
-    "show": true,
-    "widthMultiplier": 0.75,
+    "show": false,
+    "lineWidth": 2,
     "tieSpacing": 15,
     "tieLength": 1.6
   },

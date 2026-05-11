@@ -144,7 +144,7 @@ const UI = {
 
     if (config.railway) {
       document.getElementById('showRailway').checked = config.railway.show !== false;
-      document.getElementById('railwayWidthMultiplier').value = config.railway.widthMultiplier ?? 2.0;
+      document.getElementById('railwayLineWidth').value = config.railway.lineWidth ?? 2;
       document.getElementById('railwayTieSpacing').value = config.railway.tieSpacing ?? 6;
       document.getElementById('railwayTieLength').value = config.railway.tieLength ?? 0.6;
     }
@@ -190,7 +190,7 @@ const UI = {
     document.getElementById('buildingOpacity').value = defaults.building.opacity;
     document.getElementById('buildingRange').value = defaults.building.range;
     document.getElementById('showRailway').checked = defaults.railway.show;
-    document.getElementById('railwayWidthMultiplier').value = defaults.railway.widthMultiplier;
+    document.getElementById('railwayLineWidth').value = defaults.railway.lineWidth;
     document.getElementById('railwayTieSpacing').value = defaults.railway.tieSpacing;
     document.getElementById('railwayTieLength').value = defaults.railway.tieLength;
     document.getElementById('fadeType').value = defaults.fade.type;
